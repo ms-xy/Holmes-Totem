@@ -25,5 +25,5 @@ project/plugins/project/
 
 # blacklist config files
 src/main/scala/org/novetta/zoo/services/**/service.conf
-config/totem.conf
-config/docker-compose.yml
+# config/totem.conf
+# config/docker-compose.yml

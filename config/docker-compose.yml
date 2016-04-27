@@ -1,0 +1,15 @@
+peinfo:
+  build: ../src/main/scala/org/novetta/zoo/services/peinfo
+  ports:
+    - "7705:8080"
+  restart: unless-stopped
+  volumes:
+    - /tmp:/tmp:ro
+
+zipmeta:
+  build: ../src/main/scala/org/novetta/zoo/services/zipmeta
+  ports:
+    - "7715:8080"
+  restart: unless-stopped
+  volumes:
+   - /tmp:/tmp:ro
