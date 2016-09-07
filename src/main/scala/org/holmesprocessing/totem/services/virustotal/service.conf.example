@@ -1,0 +1,17 @@
+{
+	"MetaData": {
+		"Name": "VirusTotal",
+		"Version": "1.0",
+		"Description": "./README.md",
+		"Copyright": "Copyright 2016 Holmes Group LLC",
+		"License": "./LICENSE"
+	},
+	"Settings": {
+		"HTTPBinding": ":8080",
+		"InfoURL": "/",
+		"AnalysisURL": "/gogadget",
+		"ApiKey": "PutYourKeyHere",
+		"UploadUnknownSamples": false,
+		"RequestTimeout": 60
+	}
+}

@@ -24,6 +24,13 @@ project/plugins/project/
 .yar
 
 # blacklist config files
-# src/main/scala/org/novetta/zoo/services/**/service.conf
-# config/totem.conf
-# config/docker-compose.yml
+src/main/scala/org/novetta/totem/services/**/service.conf
+src/main/scala/org/novetta/totem/services/**/service.conf.json
+src/main/scala/org/holmesprocessing/totem/services/**/service.conf
+src/main/scala/org/holmesprocessing/totem/services/**/service.conf.json
+config/totem.conf
+config/docker-compose.yml
+
+# builds
+src/main/scala/org/holmesprocessing/totem/services/virustotal/virustotal
+src/main/scala/org/holmesprocessing/totem/services/gogadget/gogadget
