@@ -18,13 +18,23 @@ from holmeslibrary.files    import LargeFileReader
 # Get service meta information and configuration
 Config = ServiceConfig("./service.conf")
 
+Metadata = {
+    "Name"        : "ZipMeta",
+    "Version"     : "1.0",
+    "Description" : "./README.md",
+    "Copyright"   : "Copyright 2016 Holmes Group LLC",
+    "License"     : "./LICENSE"
+}
+
+
 class ZipError (ServiceRequestError):
     pass
 
 class ZipMetaProcess(tornado.web.RequestHandler):
-    def get(self, filename):
+    def get(self):
         resultset = ServiceResultSet()
         try:
+            filename = self.get_argument("obj", strip=False)
             # read file
             fullPath = os.path.join('/tmp/', filename)
             data     = LargeFileReader(fullPath)
@@ -80,7 +90,8 @@ class ZipMetaProcess(tornado.web.RequestHandler):
                 resultset.add(zipfilename, zipentry.data)
             
             self.write({"filecount": resultset.size, "files": resultset.data})
-        
+        except tornado.web.MissingArgumentError:
+            raise tornado.web.HTTPError(400)
         except ZipError as ze:
             self.set_status(ze.status, str(ze.error))
             self.write("")
@@ -99,19 +110,26 @@ class Info(tornado.web.RequestHandler):
             <hr>
             <p>{license:s}
         """.format(
-            name        = str(Config.metadata.name).replace("\n", "<br>"),
-            version     = str(Config.metadata.version).replace("\n", "<br>"),
-            description = str(Config.metadata.description).replace("\n", "<br>"),
-            license     = str(Config.metadata.license).replace("\n", "<br>")
+            name        = str(Metadata["Name"]).replace("\n", "<br>"),
+            version     = str(Metadata["Version"]).replace("\n", "<br>"),
+            description = str(Metadata["Description"]).replace("\n", "<br>"),
+            license     = str(Metadata["License"]).replace("\n", "<br>")
         )
         self.write(info)
 
 
 class ZipMetaApp(tornado.web.Application):
     def __init__(self):
+
+        for key in ["Description", "License"]:
+            fpath = Metadata[key]
+            if os.path.isfile(fpath):
+                with open(fpath) as file:
+                    Metadata[key] = file.read()
+
         handlers = [
-            (Config.settings.infourl + r'', Info),
-            (Config.settings.analysisurl + r'/([a-zA-Z0-9\-\.]*)', ZipMetaProcess),
+            (r'/', Info),
+            (r'/analyze/', ZipMetaProcess),
         ]
         settings = dict(
             template_path=path.join(path.dirname(__file__), 'templates'),

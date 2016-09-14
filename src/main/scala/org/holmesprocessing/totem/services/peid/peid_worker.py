@@ -8,7 +8,7 @@ import os
 from os import path
 
 # imports for yara to work
-from io import StringIO
+from io import BytesIO
 import base64
 import yara
 
@@ -17,6 +17,14 @@ from holmeslibrary.services import ServiceConfig
 
 # Get service meta information and configuration
 Config = ServiceConfig("./service.conf")
+
+Metadata = {
+    "Name"        : "PEiD",
+    "Version"     : "1.0",
+    "Description" : "./README.md",
+    "Copyright"   : "Copyright 2016 Holmes Group LLC",
+    "License"     : "./LICENSE"
+}
 
 class YaraHandler(tornado.web.RequestHandler):
     @property
@@ -27,33 +35,44 @@ class PEiDProcess(YaraHandler):
     def process(self, filename, rules=None):
         try:
             if rules:
-                ruleBuff = StringIO()
+                ruleBuff = BytesIO()
                 ruleBuff.write(rules)
                 ruleBuff.seek(0)
-
                 rules = yara.load(file=ruleBuff)
                 results = rules.match(filename[0], externals={'filename': filename[1]})
             else:
                 results = self.YaraEngine.match(filename[0], externals={'filename': filename[1]})
             results2 = list(map(lambda x: {"rule": x.rule}, results))
             return results2
+        except yara.Error:
+            # Rules are uncompiled -> compile them
+            rules = yara.compile(source=rules.decode('latin-1'))
+            results = rules.match(filename[0], externals={'filename': filename[1]})
+            results2 = list(map(lambda x: {"rule": x.rule}, results))
+            return results2
         except Exception as e:
             return e
 
-    def get(self, filename):
+    def get(self):
         try:
+            filename = self.get_argument("obj", strip=False)
             fullPath = (os.path.join('/tmp/', filename), filename)
             data = self.process(fullPath)
             self.write({"peid": data})
+        except tornado.web.MissingArgumentError:
+            raise tornado.web.HTTPError(400)
         except Exception as e:
             self.write({"error": traceback.format_exc(e)})
 
-    def post(self, filename):
+    def post(self):
         try:
-            fullPath = os.path.join('/tmp/', filename)
-            rules = base64.b64decode(self.get_body_argument('custom_rule')).decode('latin-1')
+            filename = self.get_argument("obj", strip=False)
+            fullPath = (os.path.join('/tmp/', filename), filename)
+            rules = base64.b64decode(self.get_body_argument('custom_rule'))
             data = self.process(fullPath, rules)
             self.write({"peid": data})
+        except tornado.web.MissingArgumentError:
+            raise tornado.web.HTTPError(400)
         except Exception as e:
             self.write({"error": traceback.format_exc(e)})
 
@@ -68,19 +87,25 @@ class Info(tornado.web.RequestHandler):
             <hr>
             <p>{license:s}
         """.format(
-            name        = str(Config.metadata.name).replace("\n", "<br>"),
-            version     = str(Config.metadata.version).replace("\n", "<br>"),
-            description = str(Config.metadata.description).replace("\n", "<br>"),
-            license     = str(Config.metadata.license).replace("\n", "<br>")
+            name        = str(Metadata["Name"]).replace("\n", "<br>"),
+            version     = str(Metadata["Version"]).replace("\n", "<br>"),
+            description = str(Metadata["Description"]).replace("\n", "<br>"),
+            license     = str(Metadata["License"]).replace("\n", "<br>")
         )
         self.write(info)
 
 
 class PEiDApp(tornado.web.Application):
     def __init__(self):
+        for key in ["Description", "License"]:
+            fpath = Metadata[key]
+            if os.path.isfile(fpath):
+                with open(fpath) as file:
+                    Metadata[key] = file.read()
+
         handlers = [
-            (Config.settings.infourl + r'', Info),
-            (Config.settings.analysisurl + r'/([a-zA-Z0-9\-]*)', PEiDProcess),
+            (r'/', Info),
+            (r'/analyze/', PEiDProcess),
         ]
         settings = dict(
             template_path=path.join(path.dirname(__file__), 'templates'),
